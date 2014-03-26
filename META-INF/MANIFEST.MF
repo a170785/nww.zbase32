@@ -1,0 +1,2 @@
+Manifest-Version: 1.0
+Main-Class: cc.cu.nikiwaibel.zbase32.ZBase32
