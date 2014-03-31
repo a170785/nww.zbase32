@@ -20,6 +20,7 @@
 package cc.cu.nikiwaibel.zbase32;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
@@ -56,6 +57,9 @@ public class ZBase32
 		// do anything else.
 		for (int i = 0; i < ALPHABET_STRING.length(); i++) {
 			ALPHABET[i] = (byte)ALPHABET_STRING.charAt(i);
+		}
+		for (int i = 0; i < REV_ALPHABET.length; i++) {
+			REV_ALPHABET[i] = -1;
 		}
 		for (int i = 0; i < ALPHABET.length; i++) {
 			REV_ALPHABET[ALPHABET[i]] = (byte)i;
@@ -211,7 +215,7 @@ public class ZBase32
 		final byte[] out = new byte[decodedSize(in)];
 		int o = 0;
 		for (int i = 0; i < in.length; i++) {
-			System.out.printf("0x%02x -> 0x%08x\n", in[i], REV_ALPHABET[in[i]]);
+// System.out.printf("0x%02x -> 0x%08x\n", in[i], REV_ALPHABET[in[i]]);
 			switch (i % 8) {
 			case 0:
 				out[o] |= (byte)(REV_ALPHABET[in[i]] << 3);
@@ -256,6 +260,7 @@ public class ZBase32
 	public static void main(final String[] args)
 	{
 		final BufferedInputStream bufferedInputStream;
+		final BufferedOutputStream bufferedOutputStream;
 		final boolean streaming;
 
 		if (args.length < 1 || args.length > 2) {
@@ -271,9 +276,11 @@ public class ZBase32
 		if (args.length == 2) {
 			streaming = false;
 			bufferedInputStream = null;
+			bufferedOutputStream = null;
 		} else {
 			streaming = true;
 			bufferedInputStream = new BufferedInputStream(System.in);
+			bufferedOutputStream = new BufferedOutputStream(System.out);
 		}
 
 		if ("encode".equalsIgnoreCase(args[0])) {
@@ -283,18 +290,41 @@ public class ZBase32
 					int b;
 					while ((b = bufferedInputStream.read()) != -1) {
 						byteArrayOutputStream.write(b);
-					 }
+					}
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
 				final byte[] a = byteArrayOutputStream.toByteArray();
-				System.out.println(new String(encode(a, a.length << 3)));
+				try {
+					bufferedOutputStream.write(encode(a, a.length << 3));
+					bufferedOutputStream.flush();
+					bufferedOutputStream.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			} else {
 				System.out.println(new String(encode(args[1].getBytes(),
 						args[1].getBytes().length << 3)));
 			}
 		} else if ("decode".equalsIgnoreCase(args[0])) {
 			if (streaming) {
+				final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+				try {
+					int b;
+					while ((b = bufferedInputStream.read()) != -1) {
+						byteArrayOutputStream.write(b);
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				final byte[] a = byteArrayOutputStream.toByteArray();
+				try {
+					bufferedOutputStream.write(decode(a));
+					bufferedOutputStream.flush();
+					bufferedOutputStream.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			} else {
 				System.out.println(new String(decode(args[1].getBytes())));
 			}
@@ -318,7 +348,7 @@ public class ZBase32
 				+ "\tjava -jar zbase32.jar help\n"
 				+ "\n"
 				+ "Example: java -jar zbase32.jar encode foo\n"
-				+ "Result: c3zs";
+				+ "Result: c3zs6";
 		if (error) {
 			System.err.println(msg);
 		} else {
